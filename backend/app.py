@@ -25,17 +25,32 @@ def add_student():
 
     return jsonify(new_student)
 
+
 @app.route("/students/<int:id>", methods=["PUT"])
-def update_attendance(id):
-    data = request.json
+def mark_attendance(id):
 
-    for student in students:
-        if student["_id"] == id:
-            student["attendance"] = data["attendance"]
-            return jsonify(student)
+    student = students_collection.find_one({"id": id})
 
-    return jsonify({"message": "Student not found"}), 404
+    if student:
 
+        new_attendance = student.get("attendance", 0) + 1
+
+        students_collection.update_one(
+            {"id": id},
+            {
+                "$set": {
+                    "attendance": new_attendance
+                }
+            }
+        )
+
+        return jsonify({
+            "message": "Attendance updated"
+        })
+
+    return jsonify({
+        "message": "Student not found"
+    }), 404
 @app.route("/students/<int:id>", methods=["DELETE"])
 def delete_student(id):
     global students
