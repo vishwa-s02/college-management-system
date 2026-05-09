@@ -6,6 +6,9 @@ import "./App.css";
 
 function App() {
 
+  // BACKEND URL
+  const API = "https://college-management-system-op7o.onrender.com";
+
   // LOGIN
   const [loggedIn, setLoggedIn] = useState(false);
   const [username, setUsername] = useState("");
@@ -17,6 +20,9 @@ function App() {
   const [course, setCourse] = useState("");
   const [search, setSearch] = useState("");
 
+  // EDIT
+  const [editingId, setEditingId] = useState(null);
+
   // FETCH STUDENTS
   useEffect(() => {
     fetchStudents();
@@ -24,24 +30,16 @@ function App() {
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get(
-        "http://127.0.0.1:10000/students"
-      );
-
+      const response = await axios.get(`${API}/students`);
       setStudents(response.data);
-
     } catch (error) {
       console.log(error);
     }
   };
 
-  // LOGIN
+  // LOGIN FUNCTION
   const handleLogin = () => {
-
-    if (
-      username === "admin" &&
-      password === "admin123"
-    ) {
+    if (username === "admin" && password === "admin123") {
       setLoggedIn(true);
     } else {
       alert("Wrong username or password");
@@ -52,26 +50,19 @@ function App() {
   const addStudent = async () => {
 
     if (name === "" || course === "") {
-      alert("Fill all fields");
+      alert("Please fill all fields");
       return;
     }
 
     try {
 
-      const response = await axios.post(
-        "http://127.0.0.1:10000/students",
-        {
-          name,
-          course,
-          attendance: 0,
-          date: new Date().toLocaleString(),
-        }
-      );
+      const response = await axios.post(`${API}/students`, {
+        name,
+        course,
+        attendance: 0,
+      });
 
-      setStudents([
-        ...students,
-        response.data
-      ]);
+      setStudents([...students, response.data]);
 
       setName("");
       setCourse("");
@@ -82,34 +73,28 @@ function App() {
     }
   };
 
-  // DELETE
+  // DELETE STUDENT
   const deleteStudent = async (id) => {
 
     try {
 
-      await axios.delete(
-        `http://127.0.0.1:10000/students/${id}`
-      );
+      await axios.delete(`${API}/students/${id}`);
 
-      fetchStudents();
+      const updated = students.filter((student) => student.id !== id);
+
+      setStudents(updated);
 
     } catch (error) {
       console.log(error);
     }
   };
 
-  // ATTENDANCE
-  const markAttendance = async (student) => {
+  // MARK ATTENDANCE
+  const markAttendance = async (id) => {
 
     try {
 
-      await axios.put(
-        `http://127.0.0.1:10000/students/${student._id}`,
-        {
-          attendance: student.attendance + 1,
-          date: new Date().toLocaleString(),
-        }
-      );
+      await axios.put(`${API}/students/${id}`);
 
       fetchStudents();
 
@@ -118,84 +103,75 @@ function App() {
     }
   };
 
-  // EDIT
-  const editStudent = async (student) => {
+  // EDIT STUDENT
+  const editStudent = (student) => {
 
-    const newName = prompt(
-      "Enter new name",
-      student.name
-    );
+    setEditingId(student.id);
+    setName(student.name);
+    setCourse(student.course);
+  };
 
-    const newCourse = prompt(
-      "Enter new course",
-      student.course
-    );
-
-    if (!newName || !newCourse) return;
+  // UPDATE STUDENT
+  const updateStudent = async () => {
 
     try {
 
-      await axios.put(
-        `http://127.0.0.1:10000/students/${student._id}`,
-        {
-          name: newName,
-          course: newCourse,
-          attendance: student.attendance,
-          date: student.date,
-        }
-      );
+      await axios.put(`${API}/edit/${editingId}`, {
+        name,
+        course,
+      });
 
       fetchStudents();
+
+      setEditingId(null);
+      setName("");
+      setCourse("");
 
     } catch (error) {
       console.log(error);
     }
   };
 
-  // PDF DOWNLOAD
+  // DOWNLOAD PDF
   const downloadPDF = () => {
 
     const doc = new jsPDF();
 
-    doc.text(
-      "College Management System",
-      20,
-      20
-    );
+    doc.text("College Management System", 20, 20);
 
-    autoTable(doc, {
+    const tableColumn = ["Name", "Course", "Attendance"];
 
-      head: [[
-        "Name",
-        "Course",
-        "Attendance",
-        "Last Updated"
-      ]],
+    const tableRows = [];
 
-      body: students.map((student) => [
+    students.forEach((student) => {
+
+      const row = [
         student.name,
         student.course,
         student.attendance,
-        student.date || "No Date",
-      ]),
+      ];
+
+      tableRows.push(row);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 30,
     });
 
     doc.save("students.pdf");
   };
 
-  // FILTER
-  const filteredStudents = students.filter(
-    (student) =>
-      student.name
-        .toLowerCase()
-        .includes(search.toLowerCase())
+  // SEARCH
+  const filteredStudents = students.filter((student) =>
+    student.name.toLowerCase().includes(search.toLowerCase())
   );
 
   // LOGIN PAGE
   if (!loggedIn) {
 
     return (
-
       <div className="login-container">
 
         <div className="login-box">
@@ -206,18 +182,14 @@ function App() {
             type="text"
             placeholder="Username"
             value={username}
-            onChange={(e) =>
-              setUsername(e.target.value)
-            }
+            onChange={(e) => setUsername(e.target.value)}
           />
 
           <input
             type="password"
             placeholder="Password"
             value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
+            onChange={(e) => setPassword(e.target.value)}
           />
 
           <button onClick={handleLogin}>
@@ -230,61 +202,20 @@ function App() {
     );
   }
 
+  // MAIN PAGE
   return (
 
     <div className="container">
 
-      <div className="top-bar">
+      <h1>
+        College Management System 🎓
+      </h1>
 
-        <h1>
-          College Management System 🎓
-        </h1>
+      <h2>
+        Total Students: {students.length}
+      </h2>
 
-        <button
-          className="logout-btn"
-          onClick={() => setLoggedIn(false)}
-        >
-          Logout
-        </button>
-
-      </div>
-
-      {/* DASHBOARD */}
-
-      <div className="dashboard">
-
-        <div className="dash-card">
-          <h3>Total Students</h3>
-          <p>{students.length}</p>
-        </div>
-
-        <div className="dash-card">
-          <h3>Total Attendance</h3>
-          <p>
-            {students.reduce(
-              (total, student) =>
-                total + student.attendance,
-              0
-            )}
-          </p>
-        </div>
-
-        <div className="dash-card">
-          <h3>Courses</h3>
-          <p>
-            {
-              new Set(
-                students.map(
-                  (student) => student.course
-                )
-              ).size
-            }
-          </p>
-        </div>
-
-      </div>
-
-      {/* PDF */}
+      {/* PDF BUTTON */}
 
       <button
         className="pdf-btn"
@@ -301,91 +232,88 @@ function App() {
           type="text"
           placeholder="Student Name"
           value={name}
-          onChange={(e) =>
-            setName(e.target.value)
-          }
+          onChange={(e) => setName(e.target.value)}
         />
 
         <input
           type="text"
           placeholder="Course"
           value={course}
-          onChange={(e) =>
-            setCourse(e.target.value)
-          }
+          onChange={(e) => setCourse(e.target.value)}
         />
 
-        <button onClick={addStudent}>
-          Add Student
-        </button>
+        {
+          editingId ? (
+            <button onClick={updateStudent}>
+              Update Student
+            </button>
+          ) : (
+            <button onClick={addStudent}>
+              Add Student
+            </button>
+          )
+        }
 
       </div>
 
       {/* SEARCH */}
 
       <input
-        className="search"
         type="text"
+        className="search"
         placeholder="Search student..."
         value={search}
-        onChange={(e) =>
-          setSearch(e.target.value)
-        }
+        onChange={(e) => setSearch(e.target.value)}
       />
 
       {/* STUDENTS */}
 
-      <div className="student-list">
+      <div className="students-grid">
 
-        {filteredStudents.map((student) => (
+        {
+          filteredStudents.map((student) => (
 
-          <div
-            key={student._id}
-            className="student-card"
-          >
-
-            <h3>{student.name}</h3>
-
-            <p>{student.course}</p>
-
-            <p>
-              Attendance: {student.attendance}
-            </p>
-
-            <p className="date">
-              Last Updated:{" "}
-              {student.date || "No Date"}
-            </p>
-
-            <button
-              className="attendance-btn"
-              onClick={() =>
-                markAttendance(student)
-              }
+            <div
+              className="student-card"
+              key={student.id}
             >
-              Mark Attendance
-            </button>
 
-            <button
-              className="edit-btn"
-              onClick={() =>
-                editStudent(student)
-              }
-            >
-              Edit
-            </button>
+              <h2>{student.name}</h2>
 
-            <button
-              className="delete-btn"
-              onClick={() =>
-                deleteStudent(student._id)
-              }
-            >
-              Delete
-            </button>
+              <h3>{student.course}</h3>
 
-          </div>
-        ))}
+              <p>
+                Attendance: {student.attendance}
+              </p>
+
+              <div className="button-group">
+
+                <button
+                  className="attendance-btn"
+                  onClick={() => markAttendance(student.id)}
+                >
+                  Mark Attendance
+                </button>
+
+                <button
+                  className="edit-btn"
+                  onClick={() => editStudent(student)}
+                >
+                  Edit
+                </button>
+
+                <button
+                  className="delete-btn"
+                  onClick={() => deleteStudent(student.id)}
+                >
+                  Delete
+                </button>
+
+              </div>
+
+            </div>
+          ))
+        }
 
       </div>
 
